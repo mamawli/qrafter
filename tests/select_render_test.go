@@ -52,3 +52,42 @@ func TestSelectRender_ParenthesizesRightPeerForNonAssociativeExpression(t *testi
 
 	assert.Equal(t, `SELECT 10 - (7 - 3)`, query.Render(dialect.PostgreSQL{}))
 }
+
+func TestSelectRender_Join(t *testing.T) {
+	u := User{}
+	require.NoError(t, qrafter.Bind(&u))
+
+	manager, err := qrafter.TableAlias(u, "manager")
+	require.NoError(t, err)
+
+	query := qrafter.Select(u.UserName, manager.UserName).
+		Join(manager, u.Age.Eq(manager.Age)).
+		Where(manager.UserName.Eq("Bob"))
+
+	assert.Equal(
+		t,
+		`SELECT "table"."user_name", "manager"."user_name" FROM "table" JOIN "table" AS "manager" ON "table"."userAge" = "manager"."userAge" WHERE "manager"."user_name" = 'Bob'`,
+		query.Render(dialect.PostgreSQL{}),
+	)
+}
+
+func TestSelectRender_LeftJoin(t *testing.T) {
+	u := User{}
+	require.NoError(t, qrafter.Bind(&u))
+
+	manager, err := qrafter.TableAlias(u, "manager")
+	require.NoError(t, err)
+
+	query := qrafter.
+		Select(u.UserName).
+		LeftJoin(
+			manager,
+			u.Age.Eq(manager.Age),
+		)
+
+	assert.Equal(
+		t,
+		`SELECT "table"."user_name" FROM "table" LEFT JOIN "table" AS "manager" ON "table"."userAge" = "manager"."userAge"`,
+		query.Render(dialect.PostgreSQL{}),
+	)
+}

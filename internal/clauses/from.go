@@ -10,20 +10,34 @@ import (
 
 type FromClause struct {
 	Tables core.TablesSet
+	Joins  []JoinClause
 }
 
 var _ = (Clauser)(FromClause{})
 
 func (c FromClause) Render(w *strings.Builder, d dialect.DialectRenderer) {
-	if len(c.Tables) > 0 {
-		w.WriteString(" FROM ")
+	if len(c.Tables) == 0 && len(c.Joins) == 0 {
+		return
+	}
 
-		for i, table := range core.GetSortedTables(c.Tables) {
+	w.WriteString(" FROM ")
+
+	tables := core.GetSortedTables(c.Tables)
+	joins := c.Joins
+	if len(tables) == 0 {
+		joins[0].Table.Render(w, d)
+		joins = joins[1:]
+	} else {
+		for i, table := range tables {
 			if i > 0 {
 				w.WriteString(", ")
 			}
-			w.WriteString(table.Render(d))
+			table.Render(w, d)
 		}
+	}
+
+	for _, join := range joins {
+		join.Render(w, d)
 	}
 }
 
@@ -34,4 +48,20 @@ func UpdateTables[T core.Selecter](c *FromClause, others []T) {
 	}
 	tables[len(tables)-1] = c.Tables
 	c.Tables = utils.UnionSets(tables...)
+	c.removeJoinedTables()
+}
+
+func (c *FromClause) AddJoin(joinType string, table core.TableRef, predicates ...core.Predicater) {
+	c.Joins = append(c.Joins, JoinClause{
+		Type:       joinType,
+		Table:      table,
+		Predicates: predicates,
+	})
+	c.removeJoinedTables()
+}
+
+func (c *FromClause) removeJoinedTables() {
+	for _, join := range c.Joins {
+		delete(c.Tables, join.Table)
+	}
 }

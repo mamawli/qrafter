@@ -8,7 +8,6 @@ import (
 	"github.com/SennovE/qrafter/internal/expr"
 )
 
-
 type Expression struct {
 	selecter core.Selecter
 }
@@ -39,7 +38,7 @@ func (e Expression) Tables() core.TablesSet {
 }
 
 func (e Expression) Precedence() int {
-	if _, ok := e.selecter.(columnMarker); ok {
+	if _, ok := e.selecter.(ColumnMarker); ok {
 		return core.PrecedenceMultiplicative + 1
 	}
 	if p, ok := e.selecter.(core.Precedencer); ok {

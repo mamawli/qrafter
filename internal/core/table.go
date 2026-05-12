@@ -2,6 +2,7 @@ package core
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/SennovE/qrafter/dialect"
 )
@@ -15,6 +16,8 @@ type TableRef struct {
 	Alias string
 }
 
+var _ = (Renderer)(TableRef{})
+
 type TablesSet = map[TableRef]struct{}
 
 func (t TableRef) SQLName() string {
@@ -24,11 +27,14 @@ func (t TableRef) SQLName() string {
 	return t.Alias
 }
 
-func (t TableRef) Render(d dialect.DialectRenderer) string {
+func (t TableRef) Render(w *strings.Builder, d dialect.DialectRenderer) {
 	if t.Alias == "" {
-		return d.QuoteIdent(t.Name)
+		w.WriteString(d.QuoteIdent(t.Name))
+	} else {
+		w.WriteString(d.QuoteIdent(t.Name))
+		w.WriteString(" AS ")
+		w.WriteString(d.QuoteIdent(t.Alias))
 	}
-	return d.QuoteIdent(t.Name) + " AS " + d.QuoteIdent(t.Alias)
 }
 
 func GetSortedTables(tables TablesSet) []TableRef {

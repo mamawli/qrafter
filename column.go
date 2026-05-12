@@ -15,11 +15,13 @@ type Column[T any] struct {
 
 var _ = (core.Selecter)(Column[int]{})
 
-type columnMarker interface {
-	qrafterColumn()
+type ColumnMarker interface {
+	TableRef() core.TableRef
 }
 
-func (c Column[T]) qrafterColumn() {}
+func (c Column[T]) TableRef() core.TableRef {
+	return c.Table
+}
 
 func (c *Column[T]) Bind(name string, table core.TableRef) {
 	c.Name = name

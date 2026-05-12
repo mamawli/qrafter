@@ -1,6 +1,10 @@
 package qrafter
 
-import "github.com/SennovE/qrafter/internal/core"
+import (
+	"reflect"
+
+	"github.com/SennovE/qrafter/internal/core"
+)
 
 type TableConfigProvider interface {
 	TableConfig() TableConfig
@@ -14,4 +18,31 @@ func TableAlias[T TableConfigProvider](table T, alias string) (T, error) {
 	config := table.TableConfig()
 	err := bindWithTableRef(&table, core.TableRef{Name: config.Name, Alias: alias})
 	return table, err
+}
+
+func GetTableRef(table TableConfigProvider) core.TableRef {
+	v := reflect.ValueOf(table)
+
+	if v.Kind() == reflect.Pointer {
+		v = v.Elem()
+	}
+
+	if v.Kind() == reflect.Struct {
+		t := v.Type()
+
+		for i := 0; i < v.NumField(); i++ {
+			sf := t.Field(i)
+			if !sf.IsExported() {
+				continue
+			}
+
+			f := v.Field(i)
+
+			if col, ok := f.Interface().(ColumnMarker); ok {
+				return col.TableRef()
+			}
+		}
+	}
+
+	return core.TableRef{Name: table.TableConfig().Name}
 }

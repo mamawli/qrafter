@@ -29,6 +29,32 @@ func (q SelectQuery) Where(predicates ...core.Predicater) SelectQuery {
 	return q
 }
 
+func (q SelectQuery) Join(table TableConfigProvider, predicates ...core.Predicater) SelectQuery {
+	return q.join("JOIN", table, predicates...)
+}
+
+func (q SelectQuery) LeftJoin(table TableConfigProvider, predicates ...core.Predicater) SelectQuery {
+	return q.join("LEFT JOIN", table, predicates...)
+}
+
+func (q SelectQuery) RightJoin(table TableConfigProvider, predicates ...core.Predicater) SelectQuery {
+	return q.join("RIGHT JOIN", table, predicates...)
+}
+
+func (q SelectQuery) FullJoin(table TableConfigProvider, predicates ...core.Predicater) SelectQuery {
+	return q.join("FULL JOIN", table, predicates...)
+}
+
+func (q SelectQuery) CrossJoin(table TableConfigProvider) SelectQuery {
+	return q.join("CROSS JOIN", table)
+}
+
+func (q SelectQuery) join(joinType string, table TableConfigProvider, predicates ...core.Predicater) SelectQuery {
+	clauses.UpdateTables(&q.fromCl, predicates)
+	q.fromCl.AddJoin(joinType, GetTableRef(table), unwrapPredicates(predicates)...)
+	return q
+}
+
 func (q SelectQuery) Limit(l int) SelectQuery {
 	q.limitOffsetCl.Limit = l
 	return q
