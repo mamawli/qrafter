@@ -124,3 +124,47 @@ func TestSelectRender_GroupByJoinedTable(t *testing.T) {
 		query.Render(dialect.PostgreSQL{}),
 	)
 }
+
+func TestSelectRender_Functions(t *testing.T) {
+	u := User{}
+	require.NoError(t, qrafter.Bind(&u))
+
+	query := qrafter.Select(
+		qrafter.Func("LOWER", u.UserName).As("lower_name"),
+		qrafter.Func("COALESCE", u.Age, "0"),
+	).Where(
+		qrafter.Func("LOWER", u.UserName).Eq("bob"),
+	)
+
+	assert.Equal(
+		t,
+		`SELECT LOWER("table"."user_name") AS "lower_name", COALESCE("table"."userAge", '0') FROM "table" WHERE LOWER("table"."user_name") = 'bob'`,
+		query.Render(dialect.PostgreSQL{}),
+	)
+}
+
+func TestSelectRender_AggregatesAndHaving(t *testing.T) {
+	u := User{}
+	require.NoError(t, qrafter.Bind(&u))
+
+	var usersCount qrafter.Aggregate = qrafter.Count()
+
+	query := qrafter.Select(
+		u.UserName,
+		usersCount.As("users_count"),
+		qrafter.Count(qrafter.Distinct(u.Age)).As("distinct_ages"),
+		qrafter.Max(u.Age).As("max_age"),
+	).
+		GroupBy(u.UserName).
+		Having(
+			usersCount.Gt(1),
+			qrafter.Max(u.Age).Ge("18"),
+		).
+		Limit(10)
+
+	assert.Equal(
+		t,
+		`SELECT "table"."user_name", COUNT(*) AS "users_count", COUNT(DISTINCT "table"."userAge") AS "distinct_ages", MAX("table"."userAge") AS "max_age" FROM "table" GROUP BY "table"."user_name" HAVING COUNT(*) > 1 AND MAX("table"."userAge") >= '18' LIMIT 10`,
+		query.Render(dialect.PostgreSQL{}),
+	)
+}

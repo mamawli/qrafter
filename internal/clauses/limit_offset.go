@@ -13,5 +13,10 @@ type LimitOffsetClause struct {
 var _ = (Clauser)(LimitOffsetClause{})
 
 func (c LimitOffsetClause) Render(w *strings.Builder, d dialect.DialectRenderer) {
-	w.WriteString(d.LimitOffset(c.Limit, c.Offset))
+	rendered := d.LimitOffset(c.Limit, c.Offset)
+	if rendered == "" {
+		return
+	}
+	w.WriteString(" ")
+	w.WriteString(rendered)
 }

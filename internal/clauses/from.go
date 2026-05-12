@@ -28,12 +28,7 @@ func (c FromClause) Render(w *strings.Builder, d dialect.DialectRenderer) {
 		joins[0].Table.Render(w, d)
 		joins = joins[1:]
 	} else {
-		for i, table := range tables {
-			if i > 0 {
-				w.WriteString(", ")
-			}
-			table.Render(w, d)
-		}
+		core.RenderWithDelimiter(w, d, ", ", tables)
 	}
 
 	for _, join := range joins {

@@ -13,12 +13,13 @@ type SelectQuery struct {
 	fromCl        clauses.FromClause
 	whereCl       clauses.WhereClause
 	groupByCl     clauses.GroupByClause
+	havingCl      clauses.HavingClause
 	limitOffsetCl clauses.LimitOffsetClause
 }
 
 func Select(cols ...core.Selecter) SelectQuery {
 	q := SelectQuery{
-		selectCl: clauses.SelectClause{Colums: cols},
+		selectCl: clauses.SelectClause{Columns: cols},
 	}
 	clauses.UpdateTables(&q.fromCl, cols)
 	return q
@@ -62,6 +63,12 @@ func (q SelectQuery) GroupBy(cols ...core.Selecter) SelectQuery {
 	return q
 }
 
+func (q SelectQuery) Having(predicates ...core.Predicater) SelectQuery {
+	clauses.UpdateTables(&q.fromCl, predicates)
+	q.havingCl.Predicates = append(q.havingCl.Predicates, unwrapPredicates(predicates)...)
+	return q
+}
+
 func (q SelectQuery) Limit(l int) SelectQuery {
 	q.limitOffsetCl.Limit = l
 	return q
@@ -80,6 +87,7 @@ func (q SelectQuery) Render(d dialect.DialectRenderer) string {
 		q.fromCl,
 		q.whereCl,
 		q.groupByCl,
+		q.havingCl,
 		q.limitOffsetCl,
 	}
 

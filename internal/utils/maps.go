@@ -1,6 +1,9 @@
 package utils
 
 func UnionSets[T comparable](ms ...map[T]struct{}) map[T]struct{} {
+	if len(ms) == 0 {
+		return make(map[T]struct{}, 0)
+	}
 	l := len(ms[0])
 	for _, m := range ms {
 		l = max(l, len(m))

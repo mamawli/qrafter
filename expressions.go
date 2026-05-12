@@ -29,6 +29,14 @@ func asSelecter(v any) core.Selecter {
 	}
 }
 
+func asSelecters(values []any) []core.Selecter {
+	selecters := make([]core.Selecter, len(values))
+	for i, value := range values {
+		selecters[i] = asSelecter(value)
+	}
+	return selecters
+}
+
 func (e Expression) Render(w *strings.Builder, d dialect.DialectRenderer) {
 	e.selecter.Render(w, d)
 }
@@ -69,4 +77,16 @@ func (e Expression) Div(v any) Expression {
 
 func Const(v any) Expression {
 	return newExpression(expr.Const(v))
+}
+
+func Star() Expression {
+	return newExpression(expr.Star())
+}
+
+func Distinct(v any) Expression {
+	return newExpression(expr.Distinct(asSelecter(v)))
+}
+
+func Func(name string, args ...any) Expression {
+	return newExpression(expr.Function(name, asSelecters(args)...))
 }

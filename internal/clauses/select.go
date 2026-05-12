@@ -8,18 +8,12 @@ import (
 )
 
 type SelectClause struct {
-	Colums []core.Selecter
+	Columns []core.Selecter
 }
 
 var _ = (Clauser)(SelectClause{})
 
 func (c SelectClause) Render(w *strings.Builder, d dialect.DialectRenderer) {
 	w.WriteString("SELECT ")
-
-	for i, col := range c.Colums {
-		if i > 0 {
-			w.WriteString(", ")
-		}
-		col.Render(w, d)
-	}
+	core.RenderWithDelimiter(w, d, ", ", c.Columns)
 }

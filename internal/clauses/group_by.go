@@ -19,10 +19,5 @@ func (c GroupByClause) Render(w *strings.Builder, d dialect.DialectRenderer) {
 	}
 
 	w.WriteString(" GROUP BY ")
-	for i, col := range c.Columns {
-		if i > 0 {
-			w.WriteString(", ")
-		}
-		col.Render(w, d)
-	}
+	core.RenderWithDelimiter(w, d, ", ", c.Columns)
 }

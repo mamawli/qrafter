@@ -27,6 +27,11 @@ type Selecter interface {
 	Tables() TablesSet
 }
 
+type Aggregater interface {
+	Selecter
+	Aggregate()
+}
+
 type Predicater interface {
 	Selecter
 	Predicate()
@@ -48,4 +53,13 @@ func RenderChild(r Renderer, parentPrecedence int, parenthesizeOnEqual bool, w *
 	}
 
 	r.Render(w, d)
+}
+
+func RenderWithDelimiter[T Renderer](w *strings.Builder, d dialect.DialectRenderer, delimiter string, renderers []T) {
+	for i, r := range renderers {
+		if i > 0 {
+			w.WriteString(delimiter)
+		}
+		r.Render(w, d)
+	}
 }
