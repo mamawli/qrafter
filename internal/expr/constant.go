@@ -1,6 +1,8 @@
 package expr
 
 import (
+	"strings"
+
 	"github.com/SennovE/qrafter/dialect"
 	"github.com/SennovE/qrafter/internal/core"
 )
@@ -15,8 +17,8 @@ func (c ConstExpression) Tables() core.TablesSet {
 	return nil
 }
 
-func (c ConstExpression) Render(d dialect.DialectRenderer) string {
-	return d.Literal(c.v)
+func (c ConstExpression) Render(w *strings.Builder, d dialect.DialectRenderer) {
+	w.WriteString(d.Literal(c.v))
 }
 
 func Const(value any) ConstExpression {

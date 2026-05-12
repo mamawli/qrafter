@@ -1,6 +1,8 @@
 package expr
 
 import (
+	"strings"
+
 	"github.com/SennovE/qrafter/dialect"
 	"github.com/SennovE/qrafter/internal/core"
 )
@@ -16,8 +18,10 @@ func (a AliasedExpression) Tables() core.TablesSet {
 	return a.expr.Tables()
 }
 
-func (a AliasedExpression) Render(d dialect.DialectRenderer) string {
-	return a.expr.Render(d) + " AS " + d.QuoteIdent(a.alias)
+func (a AliasedExpression) Render(w *strings.Builder, d dialect.DialectRenderer) {
+	a.expr.Render(w, d)
+	w.WriteString(" AS ")
+	w.WriteString(d.QuoteIdent(a.alias))
 }
 
 func Alias(expr core.Selecter, alias string) AliasedExpression {

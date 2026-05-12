@@ -14,10 +14,12 @@ func TestSelectRender_ParenthesizesLowerPrecedencePredicate(t *testing.T) {
 	require.NoError(t, qrafter.Bind(&u))
 
 	query := qrafter.Select(u.UserName).Where(
-		qrafter.Eq(u.UserName, qrafter.Const("ABC")),
-		qrafter.Or(
-			qrafter.Ge(u.Age, qrafter.Const("1")),
-			qrafter.Eq(qrafter.Const("Test"), u.UserName),
+		qrafter.And(
+			u.UserName.Eq("ABC"),
+			qrafter.Or(
+				u.Age.Ge("1"),
+				qrafter.Const("Test").Eq(u.UserName),
+			),
 		),
 	)
 
@@ -33,10 +35,7 @@ func TestSelectRender_ParenthesizesLowerPrecedenceExpression(t *testing.T) {
 	require.NoError(t, qrafter.Bind(&u))
 
 	query := qrafter.Select(
-		qrafter.Mul(
-			qrafter.Sum(u.Age, qrafter.Const(1)),
-			qrafter.Const(2),
-		),
+		u.Age.Add(1).Mul(2),
 	)
 
 	assert.Equal(
@@ -48,10 +47,7 @@ func TestSelectRender_ParenthesizesLowerPrecedenceExpression(t *testing.T) {
 
 func TestSelectRender_ParenthesizesRightPeerForNonAssociativeExpression(t *testing.T) {
 	query := qrafter.Select(
-		qrafter.Sub(
-			qrafter.Const(10),
-			qrafter.Sub(qrafter.Const(7), qrafter.Const(3)),
-		),
+		qrafter.Const(10).Sub(qrafter.Const(7).Sub(3)),
 	)
 
 	assert.Equal(t, `SELECT 10 - (7 - 3)`, query.Render(dialect.PostgreSQL{}))

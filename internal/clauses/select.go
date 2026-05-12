@@ -20,6 +20,6 @@ func (c SelectClause) Render(w *strings.Builder, d dialect.DialectRenderer) {
 		if i > 0 {
 			w.WriteString(", ")
 		}
-		w.WriteString(col.Render(d))
+		col.Render(w, d)
 	}
 }

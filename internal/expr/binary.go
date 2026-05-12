@@ -2,6 +2,7 @@ package expr
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/SennovE/qrafter/dialect"
 	"github.com/SennovE/qrafter/internal/core"
@@ -15,13 +16,10 @@ type BinaryExpression struct {
 
 var _ = (core.Selecter)(BinaryExpression{})
 
-func (e BinaryExpression) Render(d dialect.DialectRenderer) string {
-	return fmt.Sprintf(
-		"%s %s %s",
-		core.RenderChild(e.a, e.Precedence(), false, d),
-		e.op,
-		core.RenderChild(e.b, e.Precedence(), e.parenthesizeRightPeer(), d),
-	)
+func (e BinaryExpression) Render(w *strings.Builder, d dialect.DialectRenderer) {
+	core.RenderChild(e.a, e.Precedence(), false, w, d)
+	fmt.Fprintf(w, " %s ", e.op)
+	core.RenderChild(e.b, e.Precedence(), e.parenthesizeRightPeer(), w, d)
 }
 
 func (e BinaryExpression) Precedence() int {

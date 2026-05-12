@@ -1,6 +1,10 @@
 package core
 
-import "github.com/SennovE/qrafter/dialect"
+import (
+	"strings"
+
+	"github.com/SennovE/qrafter/dialect"
+)
 
 const (
 	PrecedenceOr = iota + 1
@@ -11,7 +15,7 @@ const (
 )
 
 type Renderer interface {
-	Render(d dialect.DialectRenderer) string
+	Render(w *strings.Builder, d dialect.DialectRenderer)
 }
 
 type Precedencer interface {
@@ -28,18 +32,20 @@ type Predicater interface {
 	Predicate()
 }
 
-func RenderChild(r Renderer, parentPrecedence int, parenthesizeOnEqual bool, d dialect.DialectRenderer) string {
-	rendered := r.Render(d)
-
+func RenderChild(r Renderer, parentPrecedence int, parenthesizeOnEqual bool, w *strings.Builder, d dialect.DialectRenderer) {
 	child, ok := r.(Precedencer)
 	if !ok {
-		return rendered
+		r.Render(w, d)
+		return
 	}
 
 	childPrecedence := child.Precedence()
 	if childPrecedence < parentPrecedence || childPrecedence == parentPrecedence && parenthesizeOnEqual {
-		return "(" + rendered + ")"
+		w.WriteString("(")
+		r.Render(w, d)
+		w.WriteString(")")
+		return
 	}
 
-	return rendered
+	r.Render(w, d)
 }

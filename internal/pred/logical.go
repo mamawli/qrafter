@@ -23,15 +23,13 @@ var _ = (core.Predicater)(LogicalPredicate{})
 
 func (e LogicalPredicate) Predicate() {}
 
-func (e LogicalPredicate) Render(d dialect.DialectRenderer) string {
-	var res strings.Builder
+func (e LogicalPredicate) Render(w *strings.Builder, d dialect.DialectRenderer) {
 	for i, p := range e.ps {
 		if i > 0 {
-			fmt.Fprintf(&res, " %s ", e.op)
+			fmt.Fprintf(w, " %s ", e.op)
 		}
-		res.WriteString(core.RenderChild(p, e.Precedence(), false, d))
+		core.RenderChild(p, e.Precedence(), false, w, d)
 	}
-	return res.String()
 }
 
 func (e LogicalPredicate) Precedence() int {

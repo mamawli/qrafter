@@ -1,34 +1,76 @@
 package qrafter
 
 import (
+	"strings"
+
+	"github.com/SennovE/qrafter/dialect"
 	"github.com/SennovE/qrafter/internal/core"
 	"github.com/SennovE/qrafter/internal/pred"
 )
 
-func And(ps ...core.Predicater) pred.LogicalPredicate {
-	return pred.Logical(pred.OpAnd, ps...)
+type Predicate struct {
+	predicater core.Predicater
 }
 
-func Or(ps ...core.Predicater) pred.LogicalPredicate {
-	return pred.Logical(pred.OpOr, ps...)
+var _ = (core.Predicater)(Predicate{})
+
+func newPredicate(p core.Predicater) Predicate {
+	return Predicate{predicater: p}
 }
 
-func Lt(a, b core.Selecter) pred.BinaryPredicate {
-	return pred.Binary("<", a, b)
+func unwrapPredicates(ps []core.Predicater) []core.Predicater {
+	res := make([]core.Predicater, len(ps))
+	for i, p := range ps {
+		if wrapped, ok := p.(Predicate); ok {
+			res[i] = wrapped.predicater
+			continue
+		}
+		res[i] = p
+	}
+	return res
 }
 
-func Gt(a, b core.Selecter) pred.BinaryPredicate {
-	return pred.Binary(">", a, b)
+func (p Predicate) Predicate() {}
+
+func (p Predicate) Render(w *strings.Builder, d dialect.DialectRenderer) {
+	p.predicater.Render(w, d)
 }
 
-func Le(a, b core.Selecter) pred.BinaryPredicate {
-	return pred.Binary("<=", a, b)
+func (p Predicate) Tables() core.TablesSet {
+	return p.predicater.Tables()
 }
 
-func Ge(a, b core.Selecter) pred.BinaryPredicate {
-	return pred.Binary(">=", a, b)
+func (p Predicate) Precedence() int {
+	if prec, ok := p.predicater.(core.Precedencer); ok {
+		return prec.Precedence()
+	}
+	return core.PrecedenceComparison
 }
 
-func Eq(a, b core.Selecter) pred.BinaryPredicate {
-	return pred.Binary("=", a, b)
+func And(ps ...core.Predicater) Predicate {
+	return newPredicate(pred.Logical(pred.OpAnd, unwrapPredicates(ps)...))
+}
+
+func Or(ps ...core.Predicater) Predicate {
+	return newPredicate(pred.Logical(pred.OpOr, unwrapPredicates(ps)...))
+}
+
+func (e Expression) Lt(v any) Predicate {
+	return newPredicate(pred.Binary("<", e.selecter, asSelecter(v)))
+}
+
+func (e Expression) Gt(v any) Predicate {
+	return newPredicate(pred.Binary(">", e.selecter, asSelecter(v)))
+}
+
+func (e Expression) Le(v any) Predicate {
+	return newPredicate(pred.Binary("<=", e.selecter, asSelecter(v)))
+}
+
+func (e Expression) Ge(v any) Predicate {
+	return newPredicate(pred.Binary(">=", e.selecter, asSelecter(v)))
+}
+
+func (e Expression) Eq(v any) Predicate {
+	return newPredicate(pred.Binary("=", e.selecter, asSelecter(v)))
 }
