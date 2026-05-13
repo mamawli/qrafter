@@ -39,11 +39,11 @@ func (q CompoundQuery) Offset(o int) CompoundQuery {
 	return q
 }
 
-func (q CompoundQuery) Union(other SelectQuery) CompoundQuery {
+func (q CompoundQuery) Union(other core.QueryExpression) CompoundQuery {
 	return newCompoundQuery(q, "UNION", other)
 }
 
-func (q CompoundQuery) UnionAll(other SelectQuery) CompoundQuery {
+func (q CompoundQuery) UnionAll(other core.QueryExpression) CompoundQuery {
 	return newCompoundQuery(q, "UNION ALL", other)
 }
 

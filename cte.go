@@ -51,3 +51,23 @@ func (cte CommonTableExpression) Column(name string) Column[any] {
 func (cte CommonTableExpression) Render(w *strings.Builder, d dialect.DialectRenderer) {
 	cte.ref.Render(w, d)
 }
+
+func (cte CommonTableExpression) Union(other core.QueryExpression) CompoundQuery {
+	return newCompoundQuery(cte, "UNION", other)
+}
+
+func (cte CommonTableExpression) UnionAll(other core.QueryExpression) CompoundQuery {
+	return newCompoundQuery(cte, "UNION ALL", other)
+}
+
+func (cte CommonTableExpression) RenderQueryExpression(w *strings.Builder, d dialect.DialectRenderer) {
+	cte.ref.Query.RenderQueryExpression(w, d)
+}
+
+func (cte CommonTableExpression) RenderSetOperand(w *strings.Builder, d dialect.DialectRenderer) {
+	cte.ref.Query.RenderSetOperand(w, d)
+}
+
+func (cte CommonTableExpression) CTEs() []*core.CTERef {
+	return cte.ref.Query.CTEs()
+}

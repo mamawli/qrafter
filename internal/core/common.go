@@ -23,7 +23,6 @@ type QueryRenderer interface {
 }
 
 type QueryExpression interface {
-	QueryRenderer
 	RenderQueryExpression(w *strings.Builder, d dialect.DialectRenderer)
 	RenderSetOperand(w *strings.Builder, d dialect.DialectRenderer)
 	CTEs() []*CTERef

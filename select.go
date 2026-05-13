@@ -87,11 +87,11 @@ func (q SelectQuery) Offset(o int) SelectQuery {
 	return q
 }
 
-func (q SelectQuery) Union(other SelectQuery) CompoundQuery {
+func (q SelectQuery) Union(other core.QueryExpression) CompoundQuery {
 	return newCompoundQuery(q, "UNION", other)
 }
 
-func (q SelectQuery) UnionAll(other SelectQuery) CompoundQuery {
+func (q SelectQuery) UnionAll(other core.QueryExpression) CompoundQuery {
 	return newCompoundQuery(q, "UNION ALL", other)
 }
 
@@ -149,13 +149,11 @@ func (q SelectQuery) CTEs() []*core.CTERef {
 	for _, table := range core.GetSortedTables(q.fromCl.Tables) {
 		if table.CTE != nil {
 			ctes = append(ctes, table.CTE)
-			ctes = append(ctes, table.CTE.Query.CTEs()...)
 		}
 	}
 	for _, join := range q.fromCl.Joins {
 		if join.Table.CTE != nil {
 			ctes = append(ctes, join.Table.CTE)
-			ctes = append(ctes, join.Table.CTE.Query.CTEs()...)
 		}
 	}
 	return ctes

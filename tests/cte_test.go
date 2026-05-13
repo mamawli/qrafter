@@ -182,11 +182,9 @@ func TestSelectRender_WithMultipleCTEs(t *testing.T) {
 }
 
 type Node struct {
-	ID q.Column[int]
+	ID       q.Column[int]
 	ParentID q.Column[int]
-	Value q.Column[int]
-	Left  q.Column[int]
-	Right q.Column[int]
+	Value    q.Column[int]
 }
 
 func (Node) TableConfig() q.TableConfig {
@@ -218,23 +216,37 @@ func TestSelectRender_ComplexRecursiveQuery(t *testing.T) {
 		Join(NodeStatusTable, NodeTable.ID.Eq(NodeStatusTable.NodeID)).
 		Where(NodeStatusTable.Status.Eq("active")).
 		CTE("nodes").
-		WithColumns("ID", "ParentID", "level")
+		Recursive().
+		WithColumns("id", "parent_id", "level")
 
 	rlevel := base.Column("level").Add(1).As("level")
 
 	recursive := q.
-        Select(NodeTable.ID, NodeTable.ParentID, rlevel).
-        Join(base, NodeTable.ParentID.Eq(base.Column("ID")))
+		Select(NodeTable.ID, NodeTable.ParentID, rlevel).
+		Join(base, NodeTable.ParentID.Eq(base.Column("id")))
 
-    cte := base.UnionAll(recursive.Limit(1))
+	cte := base.UnionAll(recursive.Limit(1)).CTE("nodes")
 
 	query := q.
-		Select(cte.Column("ID"), cte.Column("ParentID"), cte.Column("level")).
+		Select(cte.Column("id"), cte.Column("parent_id"), cte.Column("level")).
 		OrderBy(cte.Column("level"))
 
 	assert.Equal(
 		t,
-		"",
+		`WITH RECURSIVE "nodes" AS (`+
+			`SELECT "node"."id", "node"."parent_id", 1 AS "level" `+
+			`FROM "node" `+
+			`JOIN "node_status" ON "node"."id" = "node_status"."node_id" `+
+			`WHERE "node_status"."status" = 'active' `+
+			`UNION ALL `+
+			`(`+
+			`SELECT "node"."id", "node"."parent_id", "nodes"."level" + 1 AS "level" `+
+			`FROM "node" `+
+			`JOIN "nodes" ON "node"."parent_id" = "nodes"."id" `+
+			`LIMIT 1`+
+			`)`+
+			`) `+
+			`SELECT "nodes"."id", "nodes"."parent_id", "nodes"."level" FROM "nodes" ORDER BY "nodes"."level"`,
 		query.Render(dialect.PostgreSQL{}),
 	)
 }
