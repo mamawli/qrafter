@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/SennovE/qrafter/dialect"
-	"github.com/SennovE/qrafter/internal/clauses"
 	"github.com/SennovE/qrafter/internal/core"
 )
 
@@ -176,14 +175,7 @@ func (q InsertQuery) Returning(items ...core.Selecter) InsertQuery {
 
 // Render renders the query and returns SQL plus bound arguments.
 func (q InsertQuery) Render(d dialect.Renderer) (sql string, args []any) {
-	renderer := core.NewArgsRenderer(d)
-	var w strings.Builder
-
-	withCl := clauses.WithClause{}.WithClauseFor(cteCollector{ctes: q.CTEs()})
-	withCl.Render(&w, renderer)
-	q.RenderStatement(&w, renderer)
-
-	return w.String(), renderer.Args()
+	return renderStatement(d, q.CTEs(), q.RenderStatement)
 }
 
 // RenderStatement writes the INSERT query body.

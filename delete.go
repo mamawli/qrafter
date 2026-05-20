@@ -60,14 +60,7 @@ func (q DeleteQuery) Returning(items ...core.Selecter) DeleteQuery {
 
 // Render renders the query and returns SQL plus bound arguments.
 func (q DeleteQuery) Render(d dialect.Renderer) (sql string, args []any) {
-	renderer := core.NewArgsRenderer(d)
-	var w strings.Builder
-
-	withCl := clauses.WithClause{}.WithClauseFor(cteCollector{ctes: q.CTEs()})
-	withCl.Render(&w, renderer)
-	q.RenderStatement(&w, renderer)
-
-	return w.String(), renderer.Args()
+	return renderStatement(d, q.CTEs(), q.RenderStatement)
 }
 
 // RenderStatement writes the DELETE query body.
@@ -136,40 +129,4 @@ func renderDeleteUsing(w *strings.Builder, d dialect.Renderer, using []core.Tabl
 
 	w.WriteString(" USING ")
 	core.RenderWithDelimiter(w, d, ", ", using)
-}
-
-func sortedTablesFromSelecters[T core.Selecter](items []T) []core.TableRef {
-	tables := make(core.TablesSet)
-	for _, item := range items {
-		for table := range item.Tables() {
-			tables[table] = struct{}{}
-		}
-	}
-	return core.GetSortedTables(tables)
-}
-
-func appendCTEsFromSelecters[T core.Selecter](ctes []*core.CTERef, seen map[string]struct{}, items []T) []*core.CTERef {
-	for _, table := range sortedTablesFromSelecters(items) {
-		ctes = appendCTEFromTable(ctes, seen, table)
-	}
-	return ctes
-}
-
-func appendCTEsFromTables(ctes []*core.CTERef, seen map[string]struct{}, tables []core.TableRef) []*core.CTERef {
-	for _, table := range tables {
-		ctes = appendCTEFromTable(ctes, seen, table)
-	}
-	return ctes
-}
-
-func appendCTEFromTable(ctes []*core.CTERef, seen map[string]struct{}, table core.TableRef) []*core.CTERef {
-	if table.CTE == nil {
-		return ctes
-	}
-	if _, ok := seen[table.CTE.Name]; ok {
-		return ctes
-	}
-	ctes = append(ctes, table.CTE)
-	seen[table.CTE.Name] = struct{}{}
-	return ctes
 }

@@ -140,15 +140,13 @@ func (q SelectQuery) RecursiveCTE(name string) CommonTableExpression {
 
 // Render renders the query and returns SQL plus bound arguments.
 func (q SelectQuery) Render(d dialect.Renderer) (sql string, args []any) {
-	renderer := core.NewArgsRenderer(d)
-	var w strings.Builder
-
 	state := q.currentState()
-	withCl := state.withCl.WithClauseFor(q)
-	withCl.Render(&w, renderer)
-	q.RenderQueryExpression(&w, renderer)
+	return renderStatementWithClause(d, state.withCl, q.CTEs(), q.RenderStatement)
+}
 
-	return w.String(), renderer.Args()
+// RenderStatement writes the SELECT query body.
+func (q SelectQuery) RenderStatement(w *strings.Builder, d dialect.Renderer) {
+	q.RenderQueryExpression(w, d)
 }
 
 // RenderQueryExpression writes the SELECT query body.
@@ -185,15 +183,11 @@ func (q SelectQuery) RenderSetOperand(w *strings.Builder, d dialect.Renderer) {
 func (q SelectQuery) CTEs() []*core.CTERef {
 	state := q.currentState()
 	ctes := make([]*core.CTERef, 0)
-	for _, table := range core.GetSortedTables(state.fromCl.Tables) {
-		if table.CTE != nil {
-			ctes = append(ctes, table.CTE)
-		}
-	}
+	seen := make(map[string]struct{})
+
+	ctes = appendCTEsFromTables(ctes, seen, core.GetSortedTables(state.fromCl.Tables))
 	for _, join := range state.fromCl.Joins {
-		if join.Table.CTE != nil {
-			ctes = append(ctes, join.Table.CTE)
-		}
+		ctes = appendCTEFromTable(ctes, seen, join.Table)
 	}
 	return ctes
 }
