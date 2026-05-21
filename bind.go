@@ -8,11 +8,15 @@ import (
 	"github.com/SennovE/qrafter/internal/utils"
 )
 
+// NameMapper maps Go struct field names to SQL column names when a field does
+// not have a db tag. Set it before calling NewTable or MustNewTable.
+var NameMapper = utils.ToSnake
+
 // NewTable creates a table model and binds its exported Column fields.
 // Table configuration can come from a TableConfig method or an embedded Table
 // field tagged with table:"table_name".
 // Column names come from the field's db tag when present; otherwise the Go
-// field name is converted to snake_case, for example UserName becomes user_name.
+// field name is mapped through NameMapper.
 func NewTable[T TableConfigProvider]() (T, error) {
 	var tmp T
 	config := getTableConfig(tmp)
@@ -56,13 +60,19 @@ func bindWithTableRef[T any](tableRef core.TableRef) (T, error) {
 			continue
 		}
 
-		name := sf.Tag.Get("db")
-		if name == "" {
-			name = utils.ToSnake(sf.Name)
-		}
-
-		col.Bind(name, tableRef)
+		col.Bind(columnNameForField(&sf), tableRef)
 	}
 
 	return table, nil
+}
+
+func columnNameForField(sf *reflect.StructField) string {
+	name := sf.Tag.Get("db")
+	if name != "" {
+		return name
+	}
+	if NameMapper == nil {
+		return utils.ToSnake(sf.Name)
+	}
+	return NameMapper(sf.Name)
 }

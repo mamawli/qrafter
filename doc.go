@@ -15,6 +15,10 @@
 //		Age      qrafter.Column[int]
 //	}
 //
+// Field names without db tags are mapped through NameMapper, which defaults to
+// snake_case conversion. Override NameMapper before binding tables if your
+// project uses a different naming convention.
+//
 // SELECT construction is centered on Select. qrafter infers the FROM clause
 // from the columns and predicates used in the query:
 //

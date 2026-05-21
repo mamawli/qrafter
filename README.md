@@ -3,26 +3,36 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/SennovE/qrafter.svg)](https://pkg.go.dev/github.com/SennovE/qrafter)
 [![Go CI](https://github.com/SennovE/qrafter/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/SennovE/qrafter/actions/workflows/go.yml)
 
-qrafter is a small type-safe SQL query builder for Go.
+**qrafter is a small type-safe SQL query builder for Go - no ORM, no codegen, just typed SQL-shaped Go.**
 
-It is a query builder for people who want to keep writing SQL-shaped Go
-code. Table structs define the available columns, queries compose from those
-typed columns, and rendering produces SQL plus driver arguments
-for `database/sql`, `sqlx`, and similar packages.
+qrafter helps you build parameterized SQL from typed Go table structs.
+You define tables once, compose queries from typed columns, and render SQL plus
+driver arguments for `database/sql`, `sqlx`, and similar packages.
+
+It is designed for Go developers who want to keep SQL explicit, but avoid
+hand-writing fragile column names, placeholders, and query fragments.
 
 ## Why qrafter?
 
-- Define tables once as Go structs with typed `qrafter.Column[T]` fields
-- Compose `SELECT`, `INSERT`, `UPDATE`, and `DELETE` statements fluently
-- Render parameterized SQL instead of interpolating user values
-- Keep using your existing database driver, connection pool, and scanning flow
-- Scan results back into the same column fields when that fits your code
+Use qrafter when you want:
+
+- Typed table and column references with `qrafter.Column[T]`
+- SQL that still looks and feels like SQL
+- Parameterized queries instead of interpolated user values
+- Dialect-aware identifier quoting and placeholders
+- Compatibility with your existing database driver and connection pool
+- A lightweight query builder instead of a full ORM
+- No code generation step in your build workflow
+
+qrafter is probably not the right fit if you want schema migrations, model
+lifecycle hooks, relationship loading, or an ORM that hides SQL from application
+code.
 
 ## Install
 
 ```sh
 go get github.com/SennovE/qrafter
-```
+````
 
 ## Quick start
 
@@ -48,7 +58,10 @@ func main() {
 	users := q.MustNewTable[User]()
 
 	sql, args := q.Select(users.ID, users.UserName).
-		Where(users.Age.Ge(18), users.UserName.Eq("Alice")).
+		Where(
+			users.Age.Ge(18),
+			users.UserName.Eq("Alice"),
+		).
 		OrderBy(users.ID.Asc()).
 		Limit(10).
 		Render(dialect.PostgreSQL{})
@@ -69,38 +82,98 @@ LIMIT 10
 [18 Alice]
 ```
 
+## How it works
+
+A qrafter table is a Go struct with typed column fields:
+
+```go
+type User struct {
+	q.Table `table:"users"`
+
+	ID       q.Column[int] `db:"id"`
+	UserName q.Column[string]
+	Age      q.Column[int]
+}
+```
+
+`q.MustNewTable[User]()` binds the struct fields to SQL table and column names.
+Queries are then composed from those typed columns and rendered for a selected
+SQL dialect.
+
+Field names are converted into column names automatically, or you can override
+them with `db` tags.
+
 ## When to use it
 
-Use qrafter when you want typed query composition in Go, but still want to see
-and control the SQL being generated.
+qrafter is useful when you want typed query composition while still keeping
+control over the generated SQL.
 
-It is probably not the right fit if you want a full ORM, schema migrations,
-model lifecycle hooks, relationship loading, or generated code from an existing
-database schema.
+Good fits:
+
+* services that already use `database/sql` or `sqlx`
+* projects that prefer explicit SQL over ORM abstractions
+* codebases where query fragments need to be composed safely
+* applications that want typed table and column references without codegen
+
+Less ideal fits:
+
+* projects that want a full ORM
+* applications that expect automatic relationship loading
+* teams that prefer writing raw SQL files and generating Go code from them
+* projects that need schema migrations as part of the same tool
 
 ## Features
 
-- Typed table structs with `qrafter.Column[T]`
-- Table configuration via a `TableConfig()` method or embedded `qrafter.Table`
-- Automatic column binding from field names or `db` tags
-- Dialect-aware identifier quoting and placeholders
-- Human-readable multiline SQL rendering
-- Parameterized `SELECT`, joins, grouping, ordering, limits, and offsets
-- Parameterized `INSERT` with `VALUES`, `DEFAULT VALUES`, `INSERT ... SELECT`, and `RETURNING`
-- Parameterized `UPDATE` with `SET`, `FROM`, `WHERE`, CTEs, and `RETURNING`
-- Parameterized `DELETE` with `WHERE`, `USING`, CTEs, and `RETURNING`
-- CTEs, recursive CTEs, compound queries, aggregates, and window functions
-- `database/sql` and `sqlx`-friendly scanning helpers
+* Typed table structs with `qrafter.Column[T]`
+* Table configuration via embedded `qrafter.Table` or `TableConfig()`
+* Automatic column binding from field names or `db` tags
+* Custom field-to-column mapping through `qrafter.NameMapper`
+* Dialect-aware identifier quoting and placeholders
+* Human-readable multiline SQL rendering
+* Parameterized `SELECT`, joins, grouping, ordering, limits, and offsets
+* Parameterized `INSERT` with `VALUES`, `DEFAULT VALUES`, `INSERT ... SELECT`, and `RETURNING`
+* Parameterized `UPDATE` with `SET`, `FROM`, `WHERE`, CTEs, and `RETURNING`
+* Parameterized `DELETE` with `WHERE`, `USING`, CTEs, and `RETURNING`
+* CTEs and recursive CTEs
+* Compound queries such as `UNION` and `UNION ALL`
+* Aggregates and window functions
+* `database/sql` and `sqlx`-friendly scanning helpers
 
 ## Dialects
 
-Qrafter currently includes:
+qrafter currently includes:
 
-- `dialect.BaseDialect` for ANSI-style double-quoted identifiers and `?`
-  placeholders
-- `dialect.PostgreSQL` for PostgreSQL-style `$1`, `$2`, ... placeholders
+* `dialect.BaseDialect` for ANSI-style double-quoted identifiers and `?` placeholders
+* `dialect.PostgreSQL` for PostgreSQL-style `$1`, `$2`, ... placeholders
+* `dialect.MySQL` for backtick-quoted identifiers and MySQL `LIMIT`/`OFFSET`
+* `dialect.SQLite` for SQLite literals and `LIMIT`/`OFFSET`
+
+Dialect support currently covers syntax qrafter can vary safely: identifier
+quoting, literals, placeholders, and `LIMIT`/`OFFSET`. Some features still need
+dedicated per-database rendering before they are fully portable, such as
+`RETURNING`, `UPDATE ... FROM`, `DELETE ... USING`, and `NULLS FIRST/LAST`.
 
 New dialects can be added by implementing `dialect.Renderer`.
+
+## Comparison
+
+| Approach            | Good when                                             | Tradeoff                                                            |
+| ------------------- | ----------------------------------------------------- | ------------------------------------------------------------------- |
+| Raw `database/sql`  | You want full control over every query                | SQL strings, placeholders, and column names are maintained manually |
+| SQL code generation | You want generated Go code from SQL files             | Adds a generation step and a SQL-first workflow                     |
+| ORM                 | You want high-level model and relationship management | SQL can become less explicit and harder to control                  |
+| qrafter             | You want typed SQL-shaped Go without ORM or codegen   | It is a lightweight query builder, not a full database framework    |
+
+## Project status
+
+qrafter is pre-v1. The API may still change while the package evolves.
+
+Feedback is especially welcome around:
+
+* API naming
+* query composition ergonomics
+* dialect support
+* real-world usage with `database/sql` and `sqlx`
 
 ## Contributing
 
@@ -109,7 +182,7 @@ development workflow and pull request guidelines.
 
 Good first areas to explore:
 
-- Add examples for common query patterns
-- Improve dialect coverage
-- Expand integration tests
-- Polish package documentation on pkg.go.dev
+* Add examples for common query patterns
+* Improve dialect coverage
+* Expand integration tests
+* Polish package documentation on pkg.go.dev

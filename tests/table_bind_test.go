@@ -26,6 +26,13 @@ type ExplicitConfigUser struct {
 	Name qrafter.Column[string] `db:"full_name"`
 }
 
+type CustomMappedUser struct {
+	qrafter.Table `table:"mapped_users"`
+
+	UserName qrafter.Column[string]
+	Age      qrafter.Column[int] `db:"age_years"`
+}
+
 func (ExplicitConfigUser) TableConfig() qrafter.TableConfig {
 	return qrafter.TableConfig{
 		Name: "explicit_users",
@@ -56,6 +63,22 @@ func TestTable_NewTable(t *testing.T) {
 		checkRenderedColumn(t, u.TableConfig().Name, "id", u.ID)
 		checkRenderedColumn(t, u.TableConfig().Name, "full_name", u.Name)
 	})
+}
+
+func TestTable_NameMapper(t *testing.T) {
+	original := qrafter.NameMapper
+	qrafter.NameMapper = func(field string) string {
+		return "mapped_" + strings.ToLower(field)
+	}
+	t.Cleanup(func() {
+		qrafter.NameMapper = original
+	})
+
+	u, err := qrafter.NewTable[CustomMappedUser]()
+	require.NoError(t, err)
+
+	checkRenderedColumn(t, u.TableConfig().Name, "mapped_username", u.UserName)
+	checkRenderedColumn(t, u.TableConfig().Name, "age_years", u.Age)
 }
 
 func TestTable_MakeAlias(t *testing.T) {
